@@ -38,7 +38,7 @@ void hwInit(void)
   logPrintf("Booting..Name \t\t: %s\r\n", boot_name);
   logPrintf("Booting..Ver  \t\t: %s\r\n", boot_ver);
 
-
+  sdramInit();
   flashInit();
 
   if (sdInit() == true)

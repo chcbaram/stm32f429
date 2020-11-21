@@ -24,6 +24,7 @@ extern "C" {
 #include "gpio.h"
 #include "sd.h"
 #include "fatfs/fatfs.h"
+#include "sdram.h"
 
 
 void hwInit(void);

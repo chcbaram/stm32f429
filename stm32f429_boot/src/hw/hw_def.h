@@ -17,6 +17,8 @@
 #define _USE_HW_SD
 #define _USE_HW_FATFS
 #define _USE_HW_FILES
+#define _USE_HW_SDRAM
+
 
 
 #define _USE_HW_LED
