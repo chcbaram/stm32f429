@@ -41,12 +41,16 @@
 #define _USE_HW_VCP
 #define _USE_HW_USB
 #define      HW_USE_CDC             1
-#define      HW_USE_MSC             0
+#define      HW_USE_MSC             1
 
 #define _USE_HW_GPIO
 #define      HW_GPIO_MAX_CH         6
 
 
+
+#define SDRAM_ADDR_IMAGE            0xD0000000    // 2MB
+#define SDRAM_ADDR_FW               0xD0200000    // 2MB
+#define SDRAM_ADDR_BUF              0xD0400000    // 2MB
 
 
 

@@ -29,8 +29,7 @@ void hwInit(void)
   uartInit();
 
   usbInit();
-  usbBegin(USB_CDC_MODE);
-  vcpInit();
+
 
   uartOpen(_DEF_UART1, 57600);
 
@@ -44,5 +43,17 @@ void hwInit(void)
   if (sdInit() == true)
   {
     fatfsInit();
+  }
+
+  if (buttonGetPressed(0) == true && sdIsDetected() == true)
+  {
+    logPrintf("usb mode   \t\t: USB_MSC\r\n");
+    usbBegin(USB_MSC_MODE);
+  }
+  else
+  {
+    logPrintf("usb mode   \t\t: USB_CDC\r\n");
+    usbBegin(USB_CDC_MODE);
+    vcpInit();
   }
 }

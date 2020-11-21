@@ -9,11 +9,11 @@
 
 
 #include "bsp.h"
-
+#include "hw_def.h"
 
 
 void SystemClock_Config(void);
-
+extern void usbDeInit(void);
 
 
 
@@ -23,11 +23,64 @@ void bspInit(void)
   SystemClock_Config();
 
   __HAL_RCC_GPIOH_CLK_ENABLE();
+
+
+  /*  T C B
+     *  0 0 0 Strongly Ordered  , Stringly Ordered
+     *  0 0 1 Device            , Shared Device
+     *  0 1 0 Normal            , Write through, no write allocate (메모리 동기화됨)
+     *  0 1 1 Normal            , Write-back, no write allocate (실제 메모리와 다를 수 있음)
+     *  1 0 0 Normal            , Non-cacheable
+     *  1 0 1 Reserved
+     *  1 1 0 Undefined
+     *  1 1 1 Normal            , Write-back, write and read allocate
+     *  2 0 0 Device            , Non-shareable device
+     *  2 0 1 Reserved
+     */
+
+    MPU_Region_InitTypeDef MPU_InitStruct;
+
+    /* Disable the MPU */
+    HAL_MPU_Disable();
+
+
+
+
+
+    /* Write-back, write and read allocate */
+    MPU_InitStruct.Enable           = MPU_REGION_ENABLE;
+    MPU_InitStruct.BaseAddress      = SDRAM_ADDR_FW;
+    MPU_InitStruct.Size             = MPU_REGION_SIZE_2MB;
+    MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+    MPU_InitStruct.IsBufferable     = MPU_ACCESS_BUFFERABLE;
+    MPU_InitStruct.IsCacheable      = MPU_ACCESS_CACHEABLE;
+    MPU_InitStruct.IsShareable      = MPU_ACCESS_NOT_SHAREABLE;
+    MPU_InitStruct.Number           = MPU_REGION_NUMBER4;
+    MPU_InitStruct.TypeExtField     = MPU_TEX_LEVEL1;
+    MPU_InitStruct.SubRegionDisable = 0x00;
+    MPU_InitStruct.DisableExec      = MPU_INSTRUCTION_ACCESS_ENABLE;
+    HAL_MPU_ConfigRegion(&MPU_InitStruct);
+
+
+
+    /* Enable the MPU */
+    HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+
 }
 
 void bspDeInit(void)
 {
+  usbDeInit();
+  HAL_RCC_DeInit();
 
+  // Disable Interrupts
+  //
+  for (int i=0; i<8; i++)
+  {
+    NVIC->ICER[i] = 0xFFFFFFFF;
+    __DSB();
+    __ISB();
+  }
 }
 
 void delay(uint32_t ms)

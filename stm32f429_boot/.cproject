@@ -109,7 +109,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/lib/FatFs/src/option/ccsbcs.c|src/lib/FatFs/src/option/cc950.c|src/lib/FatFs/src/option/cc949.c|src/lib/FatFs/src/option/cc936.c|src/lib/FatFs/src/option/cc932.c|src/lib/STM32_USB_Device_Library/Core/Src/usbd_desc_template.c|src/lib/STM32_USB_Device_Library/Core/Src/usbd_conf_template.c|src/lib/STM32_USB_Device_Library/Class|src/hw/driver/usb/usb_msc|src/lib/cube_f429/Core" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/lib/FatFs/src/option/ccsbcs.c|src/lib/FatFs/src/option/cc950.c|src/lib/FatFs/src/option/cc949.c|src/lib/FatFs/src/option/cc936.c|src/lib/FatFs/src/option/cc932.c|src/lib/STM32_USB_Device_Library/Core/Src/usbd_desc_template.c|src/lib/STM32_USB_Device_Library/Core/Src/usbd_conf_template.c|src/lib/STM32_USB_Device_Library/Class|src/lib/cube_f429/Core" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -193,7 +193,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="src/lib/FatFs/src/option/ccsbcs.c|src/lib/FatFs/src/option/cc950.c|src/lib/FatFs/src/option/cc949.c|src/lib/FatFs/src/option/cc936.c|src/lib/FatFs/src/option/cc932.c|src/lib/STM32_USB_Device_Library/Core/Src/usbd_desc_template.c|src/lib/STM32_USB_Device_Library/Core/Src/usbd_conf_template.c|src/lib/STM32_USB_Device_Library/Class|src/hw/driver/usb/usb_msc|src/lib/cube_f429/Core" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="src/lib/FatFs/src/option/ccsbcs.c|src/lib/FatFs/src/option/cc950.c|src/lib/FatFs/src/option/cc949.c|src/lib/FatFs/src/option/cc936.c|src/lib/FatFs/src/option/cc932.c|src/lib/STM32_USB_Device_Library/Core/Src/usbd_desc_template.c|src/lib/STM32_USB_Device_Library/Core/Src/usbd_conf_template.c|src/lib/STM32_USB_Device_Library/Class|src/lib/cube_f429/Core" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
