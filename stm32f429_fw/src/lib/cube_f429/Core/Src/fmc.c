@@ -235,7 +235,6 @@ static void HAL_FMC_MspDeInit(void){
   /* Peripheral clock enable */
   __HAL_RCC_FMC_CLK_DISABLE();
 
-
   /** FMC GPIO Configuration
   PI9   ------> FMC_D30
   PI10   ------> FMC_D31

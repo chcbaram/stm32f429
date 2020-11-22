@@ -44,7 +44,7 @@ bool sdEraseBlocks(uint32_t start_addr, uint32_t end_addr);
 bool sdIsBusy(void);
 bool sdIsDetected(void);
 bool sdGetInfo(sd_info_t *p_info);
-
+bool sdIsReady(uint32_t timeout);
 
 #endif /* _USE_HW_LED */
 

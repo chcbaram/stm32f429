@@ -20,9 +20,11 @@
 //
 static bool is_init = false;
 static bool is_detected = false;
+static volatile bool is_rx_done = false;
+static volatile bool is_tx_done = false;
 static SD_HandleTypeDef uSdHandle;
-
-
+static DMA_HandleTypeDef hdma_sdio_rx;
+static DMA_HandleTypeDef hdma_sdio_tx;
 
 
 //-- External Variables
@@ -81,7 +83,7 @@ bool sdInit(void)
   }
   else
   {
-#if 0
+#if 1
     /* Enable wide operation */
     if(HAL_SD_ConfigWideBusOperation(&uSdHandle, SDIO_BUS_WIDE_4B) != HAL_OK)
     {
@@ -124,6 +126,8 @@ bool sdDeInit(void)
   __HAL_RCC_SDIO_CLK_DISABLE();
 
 
+  gpioInit();
+
   is_init = false;
 
   return ret;
@@ -133,13 +137,40 @@ bool sdDeInit(void)
 bool sdReadBlocks(uint32_t block_addr, uint8_t *p_data, uint32_t num_of_blocks, uint32_t timeout_ms)
 {
   bool ret = false;
+  uint32_t pre_time;
 
-
+#if 0
   if(HAL_SD_ReadBlocks(&uSdHandle, (uint8_t *)p_data, block_addr, num_of_blocks, timeout_ms) == HAL_OK)
   {
     while(sdIsBusy() == true);
     ret = true;
   }
+#else
+
+  is_rx_done = false;
+  if(HAL_SD_ReadBlocks_DMA(&uSdHandle, (uint8_t *)p_data, block_addr, num_of_blocks) == HAL_OK)
+  {
+
+    pre_time = millis();
+    while(is_rx_done == false)
+    {
+      if (millis()-pre_time >= timeout_ms)
+      {
+        break;
+      }
+    }
+    pre_time = millis();
+    while(sdIsBusy() == true)
+    {
+      if (millis()-pre_time >= timeout_ms)
+      {
+        is_rx_done = false;
+        break;
+      }
+    }
+    ret = is_rx_done;
+  }
+#endif
 
   return ret;
 }
@@ -147,13 +178,41 @@ bool sdReadBlocks(uint32_t block_addr, uint8_t *p_data, uint32_t num_of_blocks, 
 bool sdWriteBlocks(uint32_t block_addr, uint8_t *p_data, uint32_t num_of_blocks, uint32_t timeout_ms)
 {
   bool ret = false;
+  uint32_t pre_time;
 
-
+#if 0
   if(HAL_SD_WriteBlocks(&uSdHandle, (uint8_t *)p_data, block_addr, num_of_blocks, timeout_ms) == HAL_OK)
   {
     ret = true;
   }
-
+  else
+  {
+    printf("sd write fail 0x%X\n", uSdHandle.ErrorCode);
+  }
+#else
+  is_tx_done = false;
+  if(HAL_SD_WriteBlocks_DMA(&uSdHandle, (uint8_t *)p_data, block_addr, num_of_blocks) == HAL_OK)
+  {
+    pre_time = millis();
+    while(is_tx_done == false)
+    {
+      if (millis()-pre_time >= timeout_ms)
+      {
+        break;
+      }
+    }
+    pre_time = millis();
+    while(sdIsBusy() == true)
+    {
+      if (millis()-pre_time >= timeout_ms)
+      {
+        is_tx_done = false;
+        break;
+      }
+    }
+    ret = is_tx_done;
+  }
+#endif
   return ret;
 }
 
@@ -161,10 +220,13 @@ bool sdEraseBlocks(uint32_t start_addr, uint32_t end_addr)
 {
   bool ret = false;
 
-
   if(HAL_SD_Erase(&uSdHandle, start_addr, end_addr) == HAL_OK)
   {
     ret = true;
+  }
+  else
+  {
+    printf("sd erase fail\n");
   }
 
   return ret;
@@ -185,6 +247,23 @@ bool sdIsBusy(void)
   }
 
   return is_busy;
+}
+
+bool sdIsReady(uint32_t timeout)
+{
+  uint32_t pre_time;
+
+  pre_time = millis();
+
+  while(millis() - pre_time < timeout)
+  {
+    if (sdIsBusy() == false)
+    {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 bool sdIsDetected(void)
@@ -237,19 +316,32 @@ void HAL_SD_AbortCallback(SD_HandleTypeDef *hsd)
 
 void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd)
 {
-  printf("sd tx isr\n");
+  //printf("sd tx isr\n");
+  is_tx_done = true;
 }
 
 void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
 {
-  printf("sd rx isr\n");
+  //printf("sd rx isr\n");
+  is_rx_done = true;
 }
 
 void SDIO_IRQHandler(void)
 {
    HAL_SD_IRQHandler(&uSdHandle);
-   printf("sd isr\n");
+   //printf("sd isr\n");
  }
+
+void DMA2_Stream3_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_sdio_rx);
+}
+
+void DMA2_Stream6_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_sdio_tx);
+  //printf("dma tx isr\n");
+}
 
 void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
 {
@@ -258,6 +350,8 @@ void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
   if(sdHandle->Instance==SDIO)
   {
   /* USER CODE BEGIN SDIO_MspInit 0 */
+
+    __HAL_RCC_DMA2_CLK_ENABLE();
 
   /* USER CODE END SDIO_MspInit 0 */
     /* SDIO clock enable */
@@ -288,9 +382,64 @@ void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
     GPIO_InitStruct.Alternate = GPIO_AF12_SDIO;
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /* USER CODE BEGIN SDIO_MspInit 1 */
 
-  /* USER CODE END SDIO_MspInit 1 */
+    /* NVIC configuration for SDIO interrupts */
+    HAL_NVIC_SetPriority(SDIO_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(SDIO_IRQn);
+
+
+    /* SDIO DMA Init */
+    /* SDIO_RX Init */
+    hdma_sdio_rx.Instance = DMA2_Stream3;
+    hdma_sdio_rx.Init.Channel = DMA_CHANNEL_4;
+    hdma_sdio_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_sdio_rx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_sdio_rx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_sdio_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+    hdma_sdio_rx.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+    hdma_sdio_rx.Init.Mode = DMA_PFCTRL;
+    hdma_sdio_rx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_sdio_rx.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
+    hdma_sdio_rx.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
+    hdma_sdio_rx.Init.MemBurst = DMA_MBURST_INC4;
+    hdma_sdio_rx.Init.PeriphBurst = DMA_PBURST_INC4;
+    if (HAL_DMA_Init(&hdma_sdio_rx) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(sdHandle,hdmarx,hdma_sdio_rx);
+
+
+
+    /* DMA2_Stream3_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+
+
+    /* SDIO_TX Init */
+    hdma_sdio_tx.Instance = DMA2_Stream6;
+    hdma_sdio_tx.Init.Channel = DMA_CHANNEL_4;
+    hdma_sdio_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    hdma_sdio_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_sdio_tx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_sdio_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+    hdma_sdio_tx.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
+    hdma_sdio_tx.Init.Mode = DMA_PFCTRL;
+    hdma_sdio_tx.Init.Priority = DMA_PRIORITY_MEDIUM;
+    hdma_sdio_tx.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
+    hdma_sdio_tx.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
+    hdma_sdio_tx.Init.MemBurst = DMA_MBURST_INC4;
+    hdma_sdio_tx.Init.PeriphBurst = DMA_PBURST_INC4;
+    if (HAL_DMA_Init(&hdma_sdio_tx) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    __HAL_LINKDMA(sdHandle,hdmatx,hdma_sdio_tx);
+
+    HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
   }
 }
 
@@ -362,6 +511,25 @@ void sdCmdif(void)
       }
     }
   }
+  else if (cmdifGetParamCnt() == 1 && cmdifHasString("read", 0) == true)
+  {
+    uint8_t sd_buf[512];
+
+    if (is_init == true)
+    {
+      if (sdReadBlocks(0, sd_buf, 1, 1000) == true)
+      {
+        for (int i=0; i<512; i++)
+        {
+          cmdifPrintf("%d : 0x%X\n", i, sd_buf[i]);
+        }
+      }
+      else
+      {
+        cmdifPrintf("sd read fail\n");
+      }
+    }
+  }
   else
   {
     ret = false;
@@ -370,6 +538,7 @@ void sdCmdif(void)
   if (ret == false)
   {
     cmdifPrintf( "sd info \n");
+    cmdifPrintf( "sd read \n");
   }
 }
 #endif /* _USE_HW_CMDIF_SD */

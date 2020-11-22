@@ -40,6 +40,11 @@ void apMain(void)
       pre_time[0] = millis();
       ledToggle(_DEF_LED1);
     }
+
+    if (uartAvailable(_DEF_UART2) > 0)
+    {
+      uartPrintf(_DEF_UART2, "RxUSB F/W 0x%X\n", uartRead(_DEF_UART2));
+    }
   }
 }
 
